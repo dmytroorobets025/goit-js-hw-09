@@ -8,8 +8,9 @@ const timerDays = document.querySelector('[data-days]');
 const timerHours = document.querySelector('[data-hours]');
 const timerMinutes = document.querySelector('[data-minutes]');
 const timerSeconds = document.querySelector('[data-seconds]');
-
-let selectedTime = 0;
+const INTERVAL__TIME = 1000;
+let selectedTime = null;
+let selectedDate = Date.now();
 
 Notiflix.Notify.init({
   position: 'center-top',
@@ -22,36 +23,44 @@ const options = {
   defaultDate: new Date(),
   minuteIncrement: 1,
   onClose(selectedDates) {
-    if (Date.now() > selectedDates[0]) {
-      return Notiflix.Notify.warning('Please choose a date in the future');
+    console.log(selectedDates[0]);
+    selectedDate = selectedDates[0];
+    if (selectedDates[0] < new Date()) {
+      Notiflix.Notify.warning('Please choose a date in the future');
+      btnStart.setAttribute('disabled', true);
+    } else {
+      btnStart.removeAttribute('disabled', '');
     }
-    selectedTime = new Date(selectedDates[0]).getTime();
-    btnStart.disabled = false;
   },
 };
+flatpickr('input#datetime-picker', options);
+btnStart.addEventListener('click', startCountdown);
 
-flatpickr(datetimePicker, options);
+function startCountdown() {
+  btnStart.setAttribute('disabled', '');
+  datetimePicker.setAttribute('disabled', '');
+  selectedTime = setInterval(timeOut, INTERVAL__TIME);
+}
 
-const startTimer = () => {
-  btnStart.disabled = true;
-  datetimePicker.disabled = true;
+function timeOut() {
+  const getTimeComponents = selectedDate - new Date();
 
-  const timerId = setInterval(() => {
-    const date = Date.now();
-    const timeToShow = selectedTime - date;
-    if (timeToShow <= 0) {
-      btnStart.disabled = false;
-      datetimePicker.disabled = false;
-      clearInterval(timerId);
-      return Notiflix.Notify.success('Time is over!');
-    }
-    const timeForTimer = convertMs(timeToShow);
-    timeToDisplay(timeForTimer);
-  }, 1000);
-};
+  if (getTimeComponents <= 0) {
+    Notiflix.Notify.success('Timer is Over!');
+    clearInterval(selectedTime);
+    return;
+  }
 
-function addLeadingZero(value) {
-  return String(value).padStart(2, '0');
+  const { days, hours, minutes, seconds } = convertMs(getTimeComponents);
+
+  timerDays.textContent = pad(days);
+  timerHours.textContent = pad(hours);
+  timerMinutes.textContent = pad(minutes);
+  timerSeconds.textContent = pad(seconds);
+}
+
+function pad(value) {
+  return String(value).padStart(2, 0);
 }
 
 function convertMs(ms) {
@@ -62,22 +71,13 @@ function convertMs(ms) {
   const day = hour * 24;
 
   // Remaining days
-  const days = addLeadingZero(Math.floor(ms / day));
+  const days = Math.floor(ms / day);
   // Remaining hours
-  const hours = addLeadingZero(Math.floor((ms % day) / hour));
+  const hours = Math.floor((ms % day) / hour);
   // Remaining minutes
-  const minutes = addLeadingZero(Math.floor(((ms % day) % hour) / minute));
+  const minutes = Math.floor(((ms % day) % hour) / minute);
   // Remaining seconds
-  const seconds = addLeadingZero(Math.floor((((ms % day) % hour) % minute) / second));
+  const seconds = Math.floor((((ms % day) % hour) % minute) / second);
 
   return { days, hours, minutes, seconds };
 }
-
-function timeToDisplay({ days, hours, minutes, seconds }) {
-  timerDays.textContent = days;
-  timerHours.textContent = hours;
-  timerMinutes.textContent = minutes;
-  timerSeconds.textContent = seconds;
-}
-
-btnStart.addEventListener('click', startTimer);
